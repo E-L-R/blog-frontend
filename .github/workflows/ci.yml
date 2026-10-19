@@ -118,6 +118,14 @@ jobs:
       - run: npm run build # previews are never indexable (VITE_INDEXABLE is not set)
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      - name: Check the Netlify credentials
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::The repository secret NETLIFY_AUTH_TOKEN is missing (README → Deployment)."
+            exit 1
+          fi
       - name: Deploy to a preview URL
         id: deploy
         env:
@@ -162,6 +170,14 @@ jobs:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           # Indexable only with real content (vite.config.ts ignores it in demo mode).
           VITE_INDEXABLE: 'true'
+      - name: Check the Netlify credentials
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::The repository secret NETLIFY_AUTH_TOKEN is missing (README → Deployment)."
+            exit 1
+          fi
       - name: Deploy to production
         id: deploy
         env:
