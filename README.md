@@ -134,6 +134,7 @@ GitHub Actions instead of Netlify's own builds:
 - **Production**: only when a release tag (`v1.2.3`) is pushed, or when the CI workflow is run
   manually with "deploy" checked. Merging to `main` costs nothing.
 - It is a static single-page app: no Netlify Functions, so no compute credits.
+- The site is connected to this repository, but `netlify.toml` (`ignore = "exit 0"`) makes Netlify skip its own Git builds: otherwise every merge to `main` would be an untested production deploy costing credits.
 
 ### One-time setup
 

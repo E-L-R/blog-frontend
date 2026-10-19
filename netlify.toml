@@ -1,9 +1,16 @@
-# Deploys come from GitHub Actions (.github/workflows/ci.yml), which builds and uploads `dist/`.
-# These settings only matter if someone builds on Netlify instead (e.g. `netlify deploy --build`).
-# Security headers and the SPA fallback are generated into dist/_headers and dist/_redirects.
+# Deploys come from GitHub Actions (.github/workflows/ci.yml): it tests, builds and uploads `dist/`
+# (previews for pull requests, production for release tags).
+#
+# The site is also connected to this repository, so Netlify would build every push itself, and every
+# merge to main would become a production deploy: 15 of the free plan's 300 monthly credits each, and
+# untested. `ignore = "exit 0"` tells Netlify to skip all of its own builds (a skipped build costs
+# nothing). Deploys uploaded by the CLI are not affected.
 [build]
   command = "npm run build"
   publish = "dist"
+  ignore = "exit 0"
 
 [build.environment]
   NODE_VERSION = "24"
+
+# Security headers and the SPA fallback are generated into dist/_headers and dist/_redirects.
