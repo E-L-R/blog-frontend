@@ -130,7 +130,8 @@ next month. A production deploy costs 15 credits; deploy previews cost none. So 
 GitHub Actions instead of Netlify's own builds:
 
 - **Every pull request**: all checks run, then the build is deployed to a free preview URL
-  (`https://pr-<number>--<site>.netlify.app`, linked from the pull request).
+  (`https://pr-<number>--<site>.netlify.app`, linked from the pull request). Dependabot's pull
+  requests get the checks but no preview: they never see the deploy token.
 - **Production**: only when a release tag (`v1.2.3`) is pushed, or when the CI workflow is run
   manually with "deploy" checked. Merging to `main` costs nothing.
 - It is a static single-page app: no Netlify Functions, so no compute credits.

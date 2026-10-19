@@ -7,7 +7,8 @@
    routing, headers or the session changed.
 3. Open a pull request with a [Conventional Commits](https://www.conventionalcommits.org/) title, e.g.
    `feat(editor): autosave drafts`. CI must be green; each pull request gets a Netlify preview.
-4. Squash-merge.
+4. Squash-merge. `main` is protected: changes land only through pull requests with green checks.
+   Release tags (`v*`) can't be moved or deleted once pushed.
 
 ## Conventions
 
