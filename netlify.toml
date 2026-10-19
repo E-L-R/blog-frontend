@@ -1,0 +1,9 @@
+# Deploys come from GitHub Actions (.github/workflows/ci.yml), which builds and uploads `dist/`.
+# These settings only matter if someone builds on Netlify instead (e.g. `netlify deploy --build`).
+# Security headers and the SPA fallback are generated into dist/_headers and dist/_redirects.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
