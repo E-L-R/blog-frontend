@@ -94,10 +94,12 @@ jobs:
   deploy-preview:
     name: Deploy preview (Netlify, free)
     needs: [verify, e2e]
-    # Not for pull requests from forks: they must never see the deploy token.
+    # Not for pull requests from forks or Dependabot: they must never see the deploy token. (Dependabot
+    # pull requests run code from new package versions, and GitHub gives them no repository secrets.)
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       vars.NETLIFY_SITE_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10

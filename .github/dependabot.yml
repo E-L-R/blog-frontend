@@ -11,9 +11,35 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 10
+    # A dependency goes into the first group that matches it.
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+      # Majors of packages that must stay on the same version: one without the other breaks `npm ci`.
+      eslint:
+        patterns: ['eslint', '@eslint/js']
+        update-types: [major]
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+        update-types: [major]
+      playwright:
+        patterns: ['@playwright/test', 'playwright-core']
+        update-types: [major]
+      vitest:
+        patterns: ['vitest', '@vitest/*']
+        update-types: [major]
+    ignore:
+      # @types/node follows the Node.js major that runs the app (.nvmrc, engines, CI): bump them together.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # Blocked upstream: eslint-plugin-jsx-a11y supports ESLint 9 at most (#12).
+      - dependency-name: 'eslint'
+        versions: ['>= 10.0.0']
+      - dependency-name: '@eslint/js'
+        versions: ['>= 10.0.0']
+      # Blocked upstream: typescript-eslint supports TypeScript < 6.1 (#13).
+      - dependency-name: 'typescript'
+        versions: ['>= 7.0.0']
     commit-message:
       prefix: 'chore(deps)'
     labels: ['dependencies']
