@@ -138,8 +138,8 @@ GitHub Actions instead of Netlify's own builds:
 
 Netlify injects a **"Powered by Netlify" badge** into free-plan projects. The badge needs inline
 scripts, so the Content-Security-Policy blocks it: the browser console shows two CSP errors from it,
-and nothing else is affected. Turn the badge off under *Project configuration → General → Powered by
-Netlify badge* (no redeploy needed) and the errors disappear.
+and nothing else is affected. Turn the badge off under _Project configuration → General → Powered by
+Netlify badge_ (no redeploy needed) and the errors disappear.
 
 ### One-time setup
 
