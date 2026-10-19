@@ -1,0 +1,23 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Tests
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Environment: only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Netlify CLI state (site link) and editors
+.netlify/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.log

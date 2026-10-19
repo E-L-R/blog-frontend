@@ -1,0 +1,193 @@
+# Build, test and deploy blog-frontend.
+#
+# Netlify's free plan has 300 credits per month and pauses every site when they run out. A production
+# deploy costs 15 credits; deploy previews cost none. So:
+#   - pull requests: everything is tested, then deployed to a free preview URL
+#   - production: only for release tags (v1.2.3) or a manual run with "deploy" checked
+# Deploy jobs are skipped until the repository variable NETLIFY_SITE_ID exists (see README → Deployment).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy this commit to production (costs 15 of the 300 monthly Netlify credits)
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '24'
+  NETLIFY_CLI: netlify-cli@27.10.2
+
+jobs:
+  verify:
+    name: Lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e:
+    name: End-to-end tests (Playwright, demo build)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Always a demo build: the end-to-end tests run against the mock API, never a real backend.
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: ''
+      - run: npm run e2e
+        env:
+          CI: 'true'
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+  deploy-preview:
+    name: Deploy preview (Netlify, free)
+    needs: [verify, e2e]
+    # Not for pull requests from forks: they must never see the deploy token.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.NETLIFY_SITE_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build # previews are never indexable (VITE_INDEXABLE is not set)
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      - name: Check the Netlify credentials
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::The repository secret NETLIFY_AUTH_TOKEN is missing (README → Deployment)."
+            exit 1
+          fi
+      - name: Deploy to a preview URL
+        id: deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          npx --yes "$NETLIFY_CLI" deploy --dir dist --no-build \
+            --alias "pr-${PR_NUMBER}" --message "PR #${PR_NUMBER}" --json > deploy.json
+          url="$(jq -r '.deploy_url' deploy.json)"
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+          echo "Preview: ${url}" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-production:
+    name: Deploy production (Netlify, 15 credits)
+    needs: [verify, e2e]
+    if: >-
+      vars.NETLIFY_SITE_ID != '' &&
+      (startsWith(github.ref, 'refs/tags/v') ||
+       (github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: netlify-production
+      cancel-in-progress: false # never interrupt a production deploy
+    permissions:
+      contents: read
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          # Indexable only with real content (vite.config.ts ignores it in demo mode).
+          VITE_INDEXABLE: 'true'
+      - name: Check the Netlify credentials
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::The repository secret NETLIFY_AUTH_TOKEN is missing (README → Deployment)."
+            exit 1
+          fi
+      - name: Deploy to production
+        id: deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          npx --yes "$NETLIFY_CLI" deploy --dir dist --no-build --prod \
+            --message "${REF_NAME} (${SHA:0:7})" --json > deploy.json
+          url="$(jq -r '.url' deploy.json)"
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+          echo "Production: ${url}" >> "$GITHUB_STEP_SUMMARY"
