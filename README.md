@@ -137,6 +137,11 @@ GitHub Actions instead of Netlify's own builds:
 - It is a static single-page app: no Netlify Functions, so no compute credits.
 - The site is connected to this repository, but `netlify.toml` (`ignore = "exit 0"`) makes Netlify skip its own Git builds: otherwise every merge to `main` would be an untested production deploy costing credits.
 
+Netlify injects a **"Powered by Netlify" badge** into free-plan projects. The badge needs inline
+scripts, so the Content-Security-Policy blocks it: the browser console shows two CSP errors from it,
+and nothing else is affected. Turn the badge off under _Project configuration → General → Powered by
+Netlify badge_ (no redeploy needed) and the errors disappear.
+
 ### One-time setup
 
 1. Create the site (Netlify UI → _Add new project_ → _Deploy manually_, or `npx netlify-cli sites:create`).
