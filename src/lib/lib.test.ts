@@ -6,6 +6,12 @@ import { pageFromSearch } from './paging.ts';
 import { safeNextPath } from './safeNext.ts';
 
 describe('safeNextPath (open-redirect guard)', () => {
+  it('refuses control characters in next', () => {
+    expect(safeNextPath('/\t/evil.example')).toBe('/');
+    expect(safeNextPath('/\n/evil.example')).toBe('/');
+    expect(safeNextPath('/posts/hello#comments')).toBe('/posts/hello#comments');
+  });
+
   it.each([
     ['/dashboard', '/dashboard'],
     ['/posts/a?preview=1#comments', '/posts/a?preview=1#comments'],
